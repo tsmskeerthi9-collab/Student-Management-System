@@ -1,65 +1,66 @@
-# Student Management System
+import sqlite3
 
-# Dictionary to store student records (Key: Student ID, Value: Details)
-students = {}
+DB_NAME = "students.db"
+
+def get_db_connection():
+    """Establishes and returns a secure database connection."""
+    return sqlite3.connect(DB_NAME)
+
+def init_db():
+    """Initializes the database and creates the students table if it doesn't exist."""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS students (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    age INTEGER NOT NULL,
+                    grade TEXT NOT NULL
+                )
+            """)
+            print("[INFO] Database initialized successfully.")
+    except sqlite3.Error as e:
+        print(f"[ERROR] Database initialization failed: {e}")
 
 def add_student():
+    """Validates input and safely inserts a new student record into the database."""
     student_id = input("Enter unique Student ID: ").strip()
-    if student_id in students:
-        print("Error: Student ID already exists!")
+    if not student_id:
+        print("[WARN] Student ID cannot be empty.")
         return
-    
+
     name = input("Enter Student Name: ").strip()
-    age = input("Enter Student Age: ").strip()
-    grade = input("Enter Student Grade/Class: ").strip()
     
-    students[student_id] = {
-        "name": name,
-        "age": age,
-        "grade": grade
-    }
-    print(f"Success: {name} added successfully!")
-
-def view_students():
-    if not students:
-        print("No student records found.")
+    try:
+        age = int(input("Enter Age: ").strip())
+    except ValueError:
+        print("[WARN] Age must be a valid integer number.")
         return
-    
-    print("\n--- Student List ---")
-    for s_id, info in students.items():
-        print(f"ID: {s_id} | Name: {info['name']} | Age: {info['age']} | Grade: {info['grade']}")
-    print("--------------------")
 
-def delete_student():
-    student_id = input("Enter Student ID to delete: ").strip()
-    if student_id in students:
-        removed = students.pop(student_id)
-        print(f"Success: Removed {removed['name']} from records.")
-    else:
-        print("Error: Student ID not found.")
+    grade = input("Enter Grade (e.g., A, B, C): ").strip()
 
-def main():
-    while True:
-        print("\n=== STUDENT MANAGEMENT SYSTEM ===")
-        print("1. Add Student")
-        print("2. View All Students")
-        print("3. Delete Student")
-        print("4. Exit")
-        
-        choice = input("Enter your choice (1-4): ").strip()
-        
-        if choice == '1':
-            add_student()
-        elif choice == '2':
-            view_students()
-        elif choice == '3':
-            delete_student()
-        elif choice == '4':
-            print("Exiting program. Goodbye!")
-            break
-        else:
-            print("Invalid choice! Please enter a number between 1 and 4.")
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Check if Student ID already exists
+            cursor.execute("SELECT id FROM students WHERE id = ?", (student_id,))
+            if cursor.fetchone():
+                print(f"[ERROR] Student ID '{student_id}' already exists!")
+                return
 
-if __name__ == "__main__":
-    main()
-      
+            # Insert new student record
+            cursor.execute(
+                "INSERT INTO students (id, name, age, grade) VALUES (?, ?, ?, ?)",
+                (student_id, name, age, grade)
+            )
+            print(f"[SUCCESS] Student '{name}' added successfully!")
+            
+    except sqlite3.Error as e:
+        print(f"[ERROR] Database operation failed: {e}")
+
+if _name_ == "_main_":
+    init_db()
+    print("\n--- Student Registration System ---")
+    add_student()
